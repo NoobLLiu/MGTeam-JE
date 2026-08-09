@@ -1,0 +1,10 @@
+# MGTeam 配置文件
+create-team-cost: 10000
+currency-name: "星光点"
+enable-playtime-check: false
+playtime-required-minutes: 600
+message-cooldown-seconds: 600
+max-messages-stored: 100
+fund-log-display-limit: 50
+activity-reduce-interval-minutes: 60
+activity-decay-percent: 0.01

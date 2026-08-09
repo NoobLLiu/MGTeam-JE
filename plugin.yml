@@ -1,0 +1,34 @@
+name: MGTeam
+version: 1.0.0
+main: cn.gmzc.mgteam.MGTeamPlugin
+api-version: '1.21'
+authors: [Codex]
+description: MG团队系统 - 自由组队、共享传送点、公共存款
+depend: [GMZCSkinCache]
+softdepend: [floodgate, Geyser-Spigot, Vault, PlaceholderAPI, Essentials, GMZCTitles]
+commands:
+  tm:
+    description: MGteam团队系统主命令
+    usage: /tm [gui]
+    aliases: [teammate]
+  tmtp:
+    description: MGteam传送锚点系统
+    usage: /tmtp
+  tmtpa:
+    description: MGteam团队玩家互传
+    usage: /tmtpa
+  tmsync:
+    description: 同步团队数据中的玩家名称
+    usage: /tmsync
+    permission: mgteam.admin
+  mgop:
+    description: MGteam团队系统管理员面板
+    usage: /mgop
+    permission: mgteam.admin
+permissions:
+  mgteam.admin:
+    description: MGTeam管理员权限
+    default: op
+  mgteam.user:
+    description: MGTeam玩家权限
+    default: true
