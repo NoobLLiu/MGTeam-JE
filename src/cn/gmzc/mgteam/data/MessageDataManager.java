@@ -64,6 +64,7 @@ public class MessageDataManager {
     public void deleteTeamMessages(String tid){msgs.remove(tid);}
     public boolean hasNewMessages(UUID uuid,String tid){String k=tid+"_"+uuid;long lv=views.getOrDefault(k,0L);List<MessageEntry>list=getMessages(tid);return !list.isEmpty()&&list.get(0).getTimestamp()>lv;}
     public void setLastViewTime(UUID uuid,String tid){views.put(tid+"_"+uuid,System.currentTimeMillis());}
+    public long getLastViewTime(UUID uuid,String tid){return views.getOrDefault(tid+"_"+uuid,0L);}
     public boolean hasNewNotice(UUID uuid,String tid,long updatedAt){return updatedAt>0&&updatedAt>noticeViews.getOrDefault(tid+"_"+uuid,0L);}
     public void setNoticeRead(UUID uuid,String tid,long updatedAt){if(updatedAt>0)noticeViews.put(tid+"_"+uuid,updatedAt);}
 }

@@ -18,6 +18,7 @@ import cn.gmzc.mgteam.gui.JavaMenus;
 import cn.gmzc.mgteam.listener.MGListeners;
 import cn.gmzc.mgteam.model.Team;
 import cn.gmzc.mgteam.model.MessageEntry;
+import cn.gmzc.mgteam.web.WebTeamManager;
 import cn.gmzc.skincache.api.PlayerSkinService;
 import java.io.File;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
     private EconomyHook economy;
     private MGListeners listeners;
     private AnvilInputGUI anvilInputGUI;
+    private WebTeamManager webTeamManager;
     private PlayerSkinService playerSkinService;
     private final Map<UUID,Consumer<Integer>> guiHandlers = new HashMap<>();
     final Map<String,Long> messageCooldowns = new HashMap<>();
@@ -61,6 +63,7 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
         fundLog.load();
         messageData.setMaxStored(config.getMaxMessagesStored());
         GuiRouter.init(this); MGTeamAPI.init(this);
+        webTeamManager=new WebTeamManager(this);
         anvilInputGUI = new AnvilInputGUI(this);
         listeners=new MGListeners(this); Bukkit.getPluginManager().registerEvents(listeners,this); Bukkit.getPluginManager().registerEvents(this,this); Bukkit.getPluginManager().registerEvents(anvilInputGUI,this);
         listeners.startActivityTimer();
@@ -84,6 +87,7 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
     public Config getConfig2(){return config;}
     public EconomyHook getEconomy(){return economy;}
     public AnvilInputGUI getAnvilInputGUI(){return anvilInputGUI;}
+    public WebTeamManager getWebTeamManager(){return webTeamManager;}
     public PlayerSkinService getPlayerSkinService(){return playerSkinService;}
     public Map<String,Long> getMessageCooldowns(){return messageCooldowns;}
 
