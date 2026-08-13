@@ -36,24 +36,34 @@ jobs:
         run: |
           set -e
           mkdir -p libs out/classes
-          # Paper API (1.21.11 snapshot, from PaperMC maven)
-          curl -fsSL -o libs/paper-api.jar \
-            "https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/1.21.11-R0.1-SNAPSHOT/paper-api-1.21.11-R0.1-SNAPSHOT.jar"
-          # Helper: download latest release version from a Maven repo
-          dl_latest() {
-            local base="$1" path="$2" art="$3"
-            local meta ver
-            meta=$(curl -fsSL "$base/$path/$art/maven-metadata.xml")
-            ver=$(grep -oP '(?<=<release>)[^<]+' <<<"$meta" | head -1)
-            [ -z "$ver" ] && ver=$(grep -oP '(?<=<version>)[^<]+' <<<"$meta" | tail -1)
-            curl -fsSL -o "libs/$art.jar" "$base/$path/$art/$ver/$art-$ver.jar"
+          # Helper: resolve SNAPSHOT artifact timestamp from version-level maven-metadata.xml
+          dl_snapshot() {
+            local base="$1" path="$2" art="$3" ver="$4"
+            local meta ts bn
+            if curl -fsSL -o "libs/$art.jar" "$base/$path/$art/$ver/$art-$ver.jar"; then
+              return 0
+            fi
+            meta=$(curl -fsSL "$base/$path/$art/$ver/maven-metadata.xml")
+            ts=$(grep -oP '(?<=<timestamp>)[^<]+' <<<"$meta" | head -1)
+            bn=$(grep -oP '(?<=<buildNumber>)[^<]+' <<<"$meta" | head -1)
+            curl -fsSL -o "libs/$art.jar" "$base/$path/$art/$ver/$art-$ver-$ts-$bn.jar"
           }
-          # Geyser / Floodgate / Cumulus (OpenCollab maven)
-          dl_latest "https://repo.opencollab.dev/main" "org/geysermc/geyser" "api"
-          dl_latest "https://repo.opencollab.dev/main" "org/geysermc/floodgate" "floodgate-api"
-          dl_latest "https://repo.opencollab.dev/main" "org/geysermc/cumulus" "cumulus"
-          # PlaceholderAPI (ExtendedClip maven)
-          dl_latest "https://repo.extendedclip.com/releases" "me/clip" "placeholderapi"
+          # Paper API (1.21.11 snapshot, from PaperMC maven)
+          dl_snapshot "https://repo.papermc.io/repository/maven-public" "io/papermc/paper/paper-api" "paper-api" "1.21.11-R0.1-SNAPSHOT"
+          # Geyser / Floodgate full plugin jars (provide geyser-api / floodgate-api classes, official download API)
+          curl -fsSL -o libs/geyser.jar \
+            "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot"
+          curl -fsSL -o libs/floodgate.jar \
+            "https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot"
+          # Cumulus (bedrock forms library, 2.x). Usually shaded inside Geyser-Spigot.jar; download separately if missing.
+          if ! jar tf libs/geyser.jar | grep -q 'org/geysermc/cumulus/'; then
+            dl_snapshot "https://repo.opencollab.dev/main" "org/geysermc/cumulus/cumulus" "cumulus" "2.0.0-SNAPSHOT"
+          fi
+          # PlaceholderAPI (ExtendedClip maven, latest release)
+          PAPI_META=$(curl -fsSL "https://repo.extendedclip.com/releases/me/clip/placeholderapi/maven-metadata.xml")
+          PAPI_VER=$(grep -oP '(?<=<release>)[^<]+' <<<"$PAPI_META" | head -1)
+          curl -fsSL -o libs/placeholderapi.jar \
+            "https://repo.extendedclip.com/releases/me/clip/placeholderapi/$PAPI_VER/placeholderapi-$PAPI_VER.jar"
           # Vault (official release)
           curl -fsSL -o libs/vault.jar \
             "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
