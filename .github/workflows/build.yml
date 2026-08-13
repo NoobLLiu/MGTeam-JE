@@ -1,0 +1,131 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0-standalone)'
+        required: true
+        default: v1.0.0-standalone
+      release_title:
+        description: 'Release title'
+        required: true
+        default: 'MGTeam-JE 独立版 v1.0.0'
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Download dependencies
+        run: |
+          set -e
+          mkdir -p libs out/classes
+          # Paper API (1.21.11 snapshot, from PaperMC maven)
+          curl -fsSL -o libs/paper-api.jar \
+            "https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/1.21.11-R0.1-SNAPSHOT/paper-api-1.21.11-R0.1-SNAPSHOT.jar"
+          # Helper: download latest release version from a Maven repo
+          dl_latest() {
+            local base="$1" path="$2" art="$3"
+            local meta ver
+            meta=$(curl -fsSL "$base/$path/$art/maven-metadata.xml")
+            ver=$(grep -oP '(?<=<release>)[^<]+' <<<"$meta" | head -1)
+            [ -z "$ver" ] && ver=$(grep -oP '(?<=<version>)[^<]+' <<<"$meta" | tail -1)
+            curl -fsSL -o "libs/$art.jar" "$base/$path/$art/$ver/$art-$ver.jar"
+          }
+          # Geyser / Floodgate / Cumulus (OpenCollab maven)
+          dl_latest "https://repo.opencollab.dev/main" "org/geysermc/geyser" "api"
+          dl_latest "https://repo.opencollab.dev/main" "org/geysermc/floodgate" "floodgate-api"
+          dl_latest "https://repo.opencollab.dev/main" "org/geysermc/cumulus" "cumulus"
+          # PlaceholderAPI (ExtendedClip maven)
+          dl_latest "https://repo.extendedclip.com/releases" "me/clip" "placeholderapi"
+          # Vault (official release)
+          curl -fsSL -o libs/vault.jar \
+            "https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
+          ls -la libs/
+
+      - name: Build GMZCTitles stub (compile-time symbols only)
+        run: |
+          set -e
+          mkdir -p stub-src/cn/gmzc/titles/api out/stub
+          cat > stub-src/cn/gmzc/titles/api/GrowthUnlocks.java <<'EOF'
+          package cn.gmzc.titles.api;
+          public final class GrowthUnlocks {
+              public static final int TEAM_LEVEL = Integer.getInteger("mgteam.stub.teamLevel", 2);
+          }
+          EOF
+          cat > stub-src/cn/gmzc/titles/api/TitleLevelService.java <<'EOF'
+          package cn.gmzc.titles.api;
+          public interface TitleLevelService {
+              int getLevel(java.util.UUID uuid);
+          }
+          EOF
+          cat > stub-src/cn/gmzc/titles/api/TitleLevelServices.java <<'EOF'
+          package cn.gmzc.titles.api;
+          public final class TitleLevelServices {
+              public static TitleLevelService get() { return null; }
+          }
+          EOF
+          javac -d out/stub $(find stub-src -name '*.java')
+          jar cf libs/gmzctitles-stub.jar -C out/stub .
+
+      - name: Compile plugin
+        run: |
+          set -e
+          CP=$(printf '%s:' libs/*.jar)
+          CP="${CP%:}"
+          # Exclude FundConsumeManager.java (same rule as local build.ps1)
+          find src -name '*.java' ! -name 'FundConsumeManager.java' > sources.txt
+          javac -encoding UTF-8 -proc:none -cp "$CP" -d out/classes @sources.txt
+          cp plugin.yml config.yml out/classes/
+          jar cf MGTeam-1.0.0.jar -C out/classes .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MGTeam-1.0.0
+          path: MGTeam-1.0.0.jar
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > release_notes.md <<'EOF'
+          # MGTeam-JE 独立版 v1.0.0
+
+          Minecraft 团队系统插件（Paper/Spigot 1.21+）：自由组队、共享传送点、团队互传、公共存款、留言板与公告、活跃度排行榜，Java 版 GUI + 基岩版表单双端支持。
+
+          ## 独立版特性
+          - 无硬依赖，可独立运行；启动时自动检测 GMZCSkinCache / GMZCTitles，未安装时对应功能自动降级
+          - 安装 Vault 后启用团队资金功能
+          - 安装 Geyser + floodgate 后启用基岩版表单
+          - 安装 PlaceholderAPI 后启用 %mgteam_*% 占位符
+
+          ## 使用
+          将 MGTeam-1.0.0.jar 放入 plugins 目录，重启服务器，输入 /tm 打开团队系统。
+
+          ## 更新日志
+          - 1.0.0：完整组队系统、共享传送锚点与互传、公共存款与流水、留言板与公告、活跃度排行榜、双端 GUI、PAPI 占位符、开发者 API、Web 导出接口
+          EOF
+          gh release create "${{ github.event.inputs.tag }}" \
+            MGTeam-1.0.0.jar README.md \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ github.event.inputs.release_title }}" \
+            --notes-file release_notes.md \
+            ${{ github.event.inputs.prerelease == 'true' && '--prerelease' || '' }}
