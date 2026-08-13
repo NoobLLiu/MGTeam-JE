@@ -91,7 +91,8 @@ jobs:
       - name: Compile plugin
         run: |
           set -e
-          CP=$(printf '%s:' libs/*.jar)
+          # Classpath = downloaded libs + all transitive deps resolved by Maven into the local repository
+          CP=$(find libs "$HOME/.m2/repository" -name '*.jar' -printf '%p:')
           CP="${CP%:}"
           # Exclude FundConsumeManager.java (same rule as local build.ps1)
           find src -name '*.java' ! -name 'FundConsumeManager.java' > sources.txt
