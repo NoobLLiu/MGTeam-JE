@@ -19,7 +19,6 @@ import cn.gmzc.mgteam.listener.MGListeners;
 import cn.gmzc.mgteam.model.Team;
 import cn.gmzc.mgteam.model.MessageEntry;
 import cn.gmzc.mgteam.web.WebTeamManager;
-import cn.gmzc.skincache.api.PlayerSkinService;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +30,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class MGTeamPlugin extends JavaPlugin implements Listener {
@@ -42,7 +42,7 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
     private MGListeners listeners;
     private AnvilInputGUI anvilInputGUI;
     private WebTeamManager webTeamManager;
-    private PlayerSkinService playerSkinService;
+    private Object playerSkinService;
     private final Map<UUID,Consumer<Integer>> guiHandlers = new HashMap<>();
     final Map<String,Long> messageCooldowns = new HashMap<>();
 
@@ -52,10 +52,8 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
         File df = getDataFolder(); if(!df.exists())df.mkdirs();
         teamData=new TeamDataManager(df,getLogger());messageData=new MessageDataManager(df,getLogger());
         fundLog=new FundLogManager(df,getLogger());
-        playerSkinService = Bukkit.getServicesManager().load(PlayerSkinService.class);
-        if (playerSkinService == null) {
-            throw new IllegalStateException("GMZCSkinCache service is unavailable");
-        }
+        playerSkinService = loadSkinService();
+        GrowthLevelAccess.init();
         teamData.load();messageData.load();
         if(messageData.migrateLegacyNoticeViews(teamData.getAll())){
             messageData.save();
@@ -69,7 +67,7 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
         listeners.startActivityTimer();
         reg("tm",new TMCommand(this));reg("tmtp",new TMTPCommand(this));reg("tmtpa",new TMTPACommand(this));reg("tmsync",new TMSyncCommand(this));reg("mgop",new MGOPCommand(this));
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI")!=null){new MGTeamPapiExpansion(this).register();getLogger().info("[MGTeam] PAPI\u6269\u5c55\u5df2\u6ce8\u518c");}
-        getLogger().info("[MGTeam] MGTeam v1.0.0 \u5df2\u52a0\u8f7d");
+        getLogger().info("[MGTeam] MGTeam-JE \u72ec\u7acb\u7248 v1.0.0 \u5df2\u52a0\u8f7d");
     }
 
     public void onDisable(){
@@ -88,8 +86,33 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
     public EconomyHook getEconomy(){return economy;}
     public AnvilInputGUI getAnvilInputGUI(){return anvilInputGUI;}
     public WebTeamManager getWebTeamManager(){return webTeamManager;}
-    public PlayerSkinService getPlayerSkinService(){return playerSkinService;}
+    public Object getPlayerSkinService(){return playerSkinService;}
     public Map<String,Long> getMessageCooldowns(){return messageCooldowns;}
+
+    /** 反射加载 GMZCSkinCache 的 PlayerSkinService，未安装时返回 null（静默降级）。 */
+    private Object loadSkinService() {
+        try {
+            Class<?> svcClass = Class.forName("cn.gmzc.skincache.api.PlayerSkinService");
+            java.lang.reflect.Method load = Bukkit.getServicesManager().getClass().getMethod("load", Class.class);
+            return load.invoke(Bukkit.getServicesManager(), svcClass);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** 应用玩家皮肤到头颅，未安装 GMZCSkinCache 时静默跳过。 */
+    public void applySkin(SkullMeta meta, UUID uuid) {
+        if (playerSkinService == null || meta == null || uuid == null) return;
+        try {
+            for (java.lang.reflect.Method m : playerSkinService.getClass().getMethods()) {
+                if ("apply".equals(m.getName()) && m.getParameterCount() == 2) {
+                    m.invoke(playerSkinService, meta, uuid);
+                    return;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
 
     public void markNoticeRead(Player player,String tid){
         if(player==null||tid==null||teamData==null||messageData==null)return;

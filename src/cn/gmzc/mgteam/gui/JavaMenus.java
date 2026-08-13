@@ -109,7 +109,7 @@ public class JavaMenus {
         SkullMeta m = (SkullMeta) i.getItemMeta();
         m.setDisplayName(display);
         if (member != null) {
-            p().getPlayerSkinService().apply(m, member.getUniqueId());
+            p().applySkin(m, member.getUniqueId());
         }
         if (lore.length > 0) { List<String> l = new ArrayList<>(); for (String s : lore) l.add(s); m.setLore(l); }
         i.setItemMeta(m);
@@ -117,7 +117,7 @@ public class JavaMenus {
     }
 
     private static ItemStack skull(UUID ownerId, String display, String... lore) {
-        ItemStack i = new ItemStack(Material.PLAYER_HEAD); SkullMeta m=(SkullMeta)i.getItemMeta(); m.setDisplayName(display); p().getPlayerSkinService().apply(m, ownerId);
+        ItemStack i = new ItemStack(Material.PLAYER_HEAD); SkullMeta m=(SkullMeta)i.getItemMeta(); m.setDisplayName(display); p().applySkin(m, ownerId);
         if(lore.length>0){List<String> l=new ArrayList<>();for(String s:lore)l.add(s);m.setLore(l);}
         i.setItemMeta(m); return i;
     }
