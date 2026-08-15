@@ -30,7 +30,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class MGTeamPlugin extends JavaPlugin implements Listener {
@@ -43,7 +45,7 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
     private AnvilInputGUI anvilInputGUI;
     private WebTeamManager webTeamManager;
     private PlayerSkinService playerSkinService;
-    private final Map<UUID,Consumer<Integer>> guiHandlers = new HashMap<>();
+    private final Map<UUID, GuiContext> guiContexts = new HashMap<>();
     final Map<String,Long> messageCooldowns = new HashMap<>();
 
     public void onEnable() {
@@ -140,19 +142,51 @@ public class MGTeamPlugin extends JavaPlugin implements Listener {
         }
     }
 
-    public void setGuiContext(UUID u,Consumer<Integer> h){if(h!=null)guiHandlers.put(u,h);else guiHandlers.remove(u);}
+    public void openGui(Player player, Inventory inventory, Consumer<Integer> handler) {
+        if (player == null || inventory == null || handler == null) {
+            throw new IllegalArgumentException("player, inventory and handler must be non-null");
+        }
+
+        guiContexts.put(player.getUniqueId(), new GuiContext(inventory, handler));
+        player.openInventory(inventory);
+    }
 
     @EventHandler
-    public void onClick(InventoryClickEvent e){
-        if(!(e.getWhoClicked() instanceof Player))return;
-        if(e.getView().getTopInventory().getType()==InventoryType.ANVIL)return;
-        String t=e.getView().getTitle();
-        if(t.startsWith("\u00a7l")||t.startsWith("\u00a7c\u00a7l")||t.startsWith("\u00a7e\u00a7l")||t.startsWith("\u00a7c")){
-            e.setCancelled(true);
-            Consumer<Integer> h=guiHandlers.get(((Player)e.getWhoClicked()).getUniqueId());
-            if(h!=null&&e.getRawSlot()>=0&&e.getRawSlot()<e.getInventory().getSize())h.accept(e.getRawSlot());
+    public void onClick(InventoryClickEvent e) {
+        if (!(e.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+
+        GuiContext context = guiContexts.get(player.getUniqueId());
+        if (context == null || e.getView().getTopInventory() != context.inventory()) {
+            return;
+        }
+
+        e.setCancelled(true);
+        if (e.getRawSlot() >= 0 && e.getRawSlot() < context.inventory().getSize()) {
+            context.handler().accept(e.getRawSlot());
         }
     }
 
+    @EventHandler
+    public void onClose(InventoryCloseEvent e) {
+        if (!(e.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        UUID uuid = player.getUniqueId();
+        GuiContext context = guiContexts.get(uuid);
+        if (context != null && e.getView().getTopInventory() == context.inventory()) {
+            guiContexts.remove(uuid, context);
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        guiContexts.remove(e.getPlayer().getUniqueId());
+    }
+
     private void reg(String n,org.bukkit.command.CommandExecutor ex){org.bukkit.command.PluginCommand c=getCommand(n);if(c!=null){c.setExecutor(ex);if(ex instanceof org.bukkit.command.TabCompleter)c.setTabCompleter((org.bukkit.command.TabCompleter)ex);}}
+
+    private record GuiContext(Inventory inventory, Consumer<Integer> handler) {}
 }

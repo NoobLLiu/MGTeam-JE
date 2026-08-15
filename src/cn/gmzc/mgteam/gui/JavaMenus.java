@@ -172,8 +172,7 @@ public class JavaMenus {
                 ));
             }
             inv.setItem(serverMenuSlot, item(Material.ARROW, "\u00a7f\u8fd4\u56de\u4e3b\u83dc\u5355", "\u00a77\u8fd4\u56de\u670d\u52a1\u5668\u4e3b\u83dc\u5355"));
-            pl.openInventory(inv);
-            p().setGuiContext(pl.getUniqueId(), id -> {
+            p().openGui(pl, inv, id -> {
                 if (id == serverMenuSlot) {
                     openServerMenu(pl);
                     return;
@@ -193,8 +192,7 @@ public class JavaMenus {
             inv.setItem(2, item(Material.LIME_WOOL, "\u00a7l\u521b\u5efa\u65b0\u56e2\u961f","\u00a77\u82b1\u8d39 "+cost+cur()+" \u521b\u5efa\u5c5e\u4e8e\u4f60\u7684\u56e2\u961f"));
             inv.setItem(4, item(Material.COMPASS, "\u00a7l\u641c\u7d22\u56e2\u961f","\u00a77\u901a\u8fc7\u56e2\u961fID\u641c\u7d22\u5e76\u7533\u8bf7\u52a0\u5165"));
             inv.setItem(6, item(Material.HOPPER, "\u00a7l\u6392\u884c\u699c","\u00a77\u67e5\u770b\u6240\u6709\u56e2\u961f\u7684\u6210\u957f\u503c\u4e0e\u8d44\u91d1\u6392\u540d"));
-            pl.openInventory(inv);
-            p().setGuiContext(pl.getUniqueId(), id -> { switch(id){case 0:openServerMenu(pl);break;case 2:openCreateTeamCheck(pl);break;case 4:openJoinByIdInput(pl);break;case 6:openTeamRankingMenu(pl);break;} });
+            p().openGui(pl, inv, id -> { switch(id){case 0:openServerMenu(pl);break;case 2:openCreateTeamCheck(pl);break;case 4:openJoinByIdInput(pl);break;case 6:openTeamRankingMenu(pl);break;} });
         }
     }
 
@@ -254,9 +252,8 @@ public class JavaMenus {
             )
         );
         inv.setItem(SLOT_BACK, item(Material.ARROW, "\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv);
         int finalPage = page;
-        p().setGuiContext(pl.getUniqueId(), slot -> {
+        p().openGui(pl, inv, slot -> {
             if (slot == SLOT_PREV && finalPage > 0) {
                 openTeamDetail(pl, tid, finalPage - 1);
             } else if (slot == SLOT_NEXT && finalPage < totalPages - 1) {
@@ -352,10 +349,9 @@ public class JavaMenus {
                 "\u00a77\u7ba1\u7406\u5458\u53ef\u5220\u9664\u4efb\u610f\u951a\u70b9\uff0c\u6210\u5458\u4ec5\u53ef\u5220\u81ea\u5df1\u521b\u5efa\u7684"));
         }
         inv.setItem(SLOT_BACK, item(Material.ARROW, "\u00a7f\u8fd4\u56de", "\u00a77\u8fd4\u56de\u56e2\u961f\u4e3b\u83dc\u5355"));
-        pl.openInventory(inv);
         int finalPage = page;
         boolean finalDeleting = deleting;
-        p().setGuiContext(pl.getUniqueId(), id -> {
+        p().openGui(pl, inv, id -> {
             if (id == SLOT_BACK) { warpDeleteMode.remove(pl.getUniqueId()); openMainMenu(pl); return; }
             if (id == SLOT_PREV && finalPage > 0) { openWarpMenu(pl, tid, finalPage - 1); return; }
             if (id == SLOT_NEXT && finalPage < totalPages - 1) { openWarpMenu(pl, tid, finalPage + 1); return; }
@@ -421,8 +417,7 @@ public class JavaMenus {
         if (safePage + 1 < totalPages) {
             inv.setItem(SLOT_NEXT, item(Material.ARROW, "\u00a7f\u4e0b\u4e00\u9875", "\u00a77\u67e5\u770b\u4e0b\u4e00\u9875\u56fe\u6807"));
         }
-        pl.openInventory(inv);
-        p().setGuiContext(pl.getUniqueId(), id -> {
+        p().openGui(pl, inv, id -> {
             if (id == SLOT_BACK) {
                 Consumer<Material> cb = pendingIconCallbacks.remove(pl.getUniqueId());
                 if (cb != null) cb.accept(null);
@@ -523,9 +518,8 @@ public class JavaMenus {
                 "\u00a77\u8fd4\u56de\u56e2\u961f\u4e3b\u83dc\u5355"
             )
         );
-        pl.openInventory(inv);
         int finalPage = page;
-        p().setGuiContext(pl.getUniqueId(), id -> {
+        p().openGui(pl, inv, id -> {
             if (id == SLOT_PREV && finalPage > 0) {
                 openTpaMainMenu(pl, tid, finalPage - 1);
             } else if (id == SLOT_NEXT && finalPage < totalPages - 1) {
@@ -557,7 +551,7 @@ public class JavaMenus {
         inv.setItem(0,itemWithModelData(Material.GOLD_NUGGET,"\u00a72\u00a7l\u5b58\u5165",2400025,"\u00a77\u5411\u56e2\u961f\u79ef\u91d1\u4e2d\u5b58\u5165\u661f\u5149\u70b9"));
         inv.setItem(1,itemWithModelData(Material.GOLD_NUGGET,"\u00a7c\u00a7l\u53d6\u51fa",2400025,"\u00a77\u4ece\u56e2\u961f\u79ef\u91d1\u4e2d\u53d6\u51fa\u661f\u5149\u70b9\uff0c\u9700\u8981\u7ba1\u7406\u5458\u6743\u9650"));
         inv.setItem(2,item(Material.ARROW,"\u00a7l\u8fd4\u56de","\u00a77\u8fd4\u56de\u56e2\u961f\u4e3b\u83dc\u5355"));
-        pl.openInventory(inv); p().setGuiContext(pl.getUniqueId(),id->{switch(id){case 0:openDepositMenu(pl,tid);break;case 1:openWithdrawMenu(pl,tid);break;case 2:openMainMenu(pl);break;}});
+        p().openGui(pl, inv, id->{switch(id){case 0:openDepositMenu(pl,tid);break;case 1:openWithdrawMenu(pl,tid);break;case 2:openMainMenu(pl);break;}});
     }
 
     public static void openDepositMenu(Player pl, String tid) {
@@ -586,7 +580,7 @@ public class JavaMenus {
         int slots=Math.min(45,display.size());int rows=(slots/9)+1;int size=Math.min(54,(rows+1)*9);if(size<9)size=9;
         Inventory inv=Bukkit.createInventory(null,size,"\u00a7l\u6d41\u6c34"); SimpleDateFormat sdf=new SimpleDateFormat("MM/dd HH:mm"); int idx=0;
         for(FundLogEntry e:display){if(idx>=45)break;String ts=sdf.format(new Date(e.getTimestamp()));String ch=e.getChange()>=0?"\u00a7a+"+e.getChange():"\u00a7c"+e.getChange();inv.setItem(idx++,item(Material.PAPER,ts+" ("+ch+"\u00a7r)",e.getBalanceBefore()+"\u2192"+e.getBalanceAfter(),e.getReason()));}
-        int bs=size-9;inv.setItem(bs,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{openTeamManageMenu(pl,tid);});
+        int bs=size-9;inv.setItem(bs,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));p().openGui(pl, inv, id->{openTeamManageMenu(pl,tid);});
     }
 
     // ==================== MESSAGE BOARD ====================
@@ -607,7 +601,7 @@ public class JavaMenus {
         for(int i=0;i<show;i++){MessageEntry m=msgs.get(i);inv.setItem(idx++,item(Material.PAPER,"\u00a7e"+m.getSenderName()+" \u00a77("+Util.timeAgo(m.getTime())+")","\u00a7f"+lineText(m.getContent())));}
         if(show==0)inv.setItem(4,item(Material.PAPER,"\u00a77\u6682\u65e0\u7559\u8a00","\u00a77\u8fd8\u6ca1\u6709\u4eba\u53d1\u5e03\u7559\u8a00\uff0c\u6765\u505a\u7b2c\u4e00\u4e2a\u5427"));
         inv.setItem(addS,item(Material.WRITABLE_BOOK,"\u00a72\u00a7l\u6dfb\u52a0\u7559\u8a00","\u00a77\u53d1\u5e03\u65b0\u7684\u7559\u8a00\u5230\u7559\u8a00\u677f","\u00a7710\u5206\u949f\u51b7\u5374\uff0c\u6700\u591a100\u5b57")); inv.setItem(addS+1,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv); p().setGuiContext(pl.getUniqueId(),id->{if(id==addS)openAddMessageMenu(pl,tid);else if(id==addS+1)openMainMenu(pl);});
+        p().openGui(pl, inv, id->{if(id==addS)openAddMessageMenu(pl,tid);else if(id==addS+1)openMainMenu(pl);});
     }
 
     public static void openAddMessageMenu(Player pl, String tid) {
@@ -631,7 +625,7 @@ public class JavaMenus {
         inv.setItem(4,item(Material.NAME_TAG,"\u00a7l\u4fee\u6539\u540d\u79f0","\u00a7r\u5f53\u524d: "+t.getName(),"\u00a77\u4fee\u6539\u56e2\u961f\u540d\u79f0\uff0c2-10\u5b57\u7b26"));
         inv.setItem(5,item(t.isPublic()?Material.LIME_WOOL:Material.RED_WOOL,"\u00a7l\u72b6\u6001","\u00a7r"+(t.isPublic()?"\u00a72\u516c\u5f00":"\u00a7c\u79c1\u5bc6"),"\u00a77\u5207\u6362\u56e2\u961f\u62db\u52df\u72b6\u6001\uff08\u516c\u5f00/\u79c1\u5bc6\uff09"));
         inv.setItem(8,item(Material.TNT,"\u00a7c\u00a7l\u89e3\u6563","\u00a77\u7acb\u5373\u89e3\u6563\u56e2\u961f\uff0c\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\uff01","\u00a77\u9700\u8981\u8f93\u5165\u56e2\u961f\u540d\u79f0\u786e\u8ba4")); inv.setItem(26,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv); p().setGuiContext(pl.getUniqueId(),id->{
+        p().openGui(pl, inv, id->{
             switch(id){case 0:openManageMembers(pl,tid);break;case 1:openManageApplications(pl,tid);break;case 2:openNoticeEditMenu(pl,tid);break;case 3:openFundLogMenu(pl,tid);break;case 4:openRenameTeamMenu(pl,tid);break;
             case 5:t.setPublic(!t.isPublic());p().getTeamData().save();pl.sendMessage("\u00a7a\u5df2\u66f4\u6539");openTeamManageMenu(pl,tid);break;case 8:openDisbandConfirmMenu(pl,tid);break;case 26:openMainMenu(pl);break;}
         });
@@ -696,9 +690,8 @@ public class JavaMenus {
             )
         );
         inv.setItem(SLOT_BACK, item(Material.ARROW, "\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv);
         int finalPage = page;
-        p().setGuiContext(pl.getUniqueId(), id -> {
+        p().openGui(pl, inv, id -> {
             if (id == SLOT_PREV && finalPage > 0) {
                 openManageMembers(pl, tid, finalPage - 1);
             } else if (id == SLOT_NEXT && finalPage < totalPages - 1) {
@@ -718,7 +711,7 @@ public class JavaMenus {
         inv.setItem(3,item(Material.YELLOW_WOOL,"\u00a7e\u00a7l\u8bbe\u4e3a\u6210\u5458","\u00a77\u5c06\u8be5\u7ba1\u7406\u5458\u964d\u7ea7\u4e3a\u666e\u901a\u6210\u5458"));
         inv.setItem(5,item(Material.RED_WOOL,"\u00a7c\u00a7l\u79fb\u51fa","\u00a77\u5c06\u8be5\u6210\u5458\u79fb\u51fa\u56e2\u961f","\u00a77\u79fb\u51fa\u540e\u65e0\u6cd5\u64a4\u9500"));
         inv.setItem(8,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv); p().setGuiContext(pl.getUniqueId(), id->{
+        p().openGui(pl, inv, id->{
             if(id==8){openManageMembers(pl,tid,page);return;}
             if(id==1&&isOp){openAlert(pl,"\u00a7c\u5df2\u662f\u7ba1\u7406\u5458",()->openManageMembers(pl,tid,page));return;}
             if(id==3&&!isOp){openAlert(pl,"\u00a7c\u5df2\u662f\u6210\u5458",()->openManageMembers(pl,tid,page));return;}
@@ -796,9 +789,8 @@ public class JavaMenus {
             )
         );
         inv.setItem(SLOT_BACK, item(Material.ARROW, "\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv);
         int finalPage = page;
-        p().setGuiContext(pl.getUniqueId(), id -> {
+        p().openGui(pl, inv, id -> {
             if (id == SLOT_PREV && finalPage > 0) {
                 openManageApplications(pl, tid, finalPage - 1);
             } else if (id == SLOT_NEXT && finalPage < totalPages - 1) {
@@ -816,7 +808,7 @@ public class JavaMenus {
         inv.setItem(2,item(Material.RED_WOOL,"\u00a7c\u00a7l\u5ffd\u7565","\u00a77\u62d2\u7edd\u8be5\u7533\u8bf7\uff0c\u4e0d\u4f1a\u901a\u77e5\u7533\u8bf7\u4eba"));
         inv.setItem(4,item(Material.LIME_WOOL,"\u00a72\u00a7l\u901a\u8fc7","\u00a77\u6279\u51c6\u8be5\u7533\u8bf7\uff0c\u7533\u8bf7\u4eba\u5c06\u52a0\u5165\u56e2\u961f"));
         inv.setItem(8,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{
+        p().openGui(pl, inv, id->{
             if(id==8){openManageApplications(pl,tid,page);return;}
             Team t=p().getTeamData().get(tid);if(t==null)return;
             if(id==2){t.getMembersapplications().removeIf(a->a.getUuid().equals(app.getUuid()));p().getTeamData().save();pl.sendMessage("\u00a7a\u5df2\u5ffd\u7565");openManageApplications(pl,tid,page);}
@@ -871,7 +863,7 @@ public class JavaMenus {
         Inventory inv=Bukkit.createInventory(null,size,"\u00a7l\u6392\u884c\u699c");int idx=0;
         for(int i=0;i<visible;i++){Team t=ranked.get(i).getValue();inv.setItem(idx++,decorativeSkull("\u00a7l"+t.getName(),"\u6210\u9577\u503c:"+t.getActivity()+" | \u79ef\u91d1:"+t.getFunds()+" | "+t.getMemberCount()+"\u4eba"));}
         int bs=size-9;inv.setItem(bs,item(Material.ARROW,"\u00a7l\u8fd4\u56de"));
-        pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{if(id==bs){openMainMenu(pl);return;}if(id>=0&&id<visible){Map.Entry<String,Team> entry=ranked.get(id);showApplyConfirm(pl,entry.getKey(),entry.getValue());}});
+        p().openGui(pl, inv, id->{if(id==bs){openMainMenu(pl);return;}if(id>=0&&id<visible){Map.Entry<String,Team> entry=ranked.get(id);showApplyConfirm(pl,entry.getKey(),entry.getValue());}});
     }
 
     // ==================== JOIN BY ID ====================
@@ -889,7 +881,7 @@ public class JavaMenus {
         inv.setItem(2,item(Material.PAPER,"\u00a7e"+t.getName(),"\u00a77"+tid,"\u6210\u957f\u503c:"+t.getActivity(),"\u79ef\u91d1:"+t.getFunds()+cur(),"\u4eba\u6570:"+t.getMemberCount()));
         inv.setItem(4,item(Material.LIME_WOOL,"\u00a72\u00a7l\u786e\u5b9a\u7533\u8bf7","\u00a77\u5411\u8be5\u56e2\u961f\u53d1\u9001\u52a0\u5165\u7533\u8bf7\uff0c\u7b49\u5f85\u7ba1\u7406\u5458\u5ba1\u6838"));
         inv.setItem(8,item(Material.ARROW,"\u00a7c\u00a7l\u53d6\u6d88"));
-        pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{if(id==4){UUID u=pl.getUniqueId();for(Map.Entry<String,Team> e:p().getTeamData().getAll().entrySet())e.getValue().getMembersapplications().removeIf(a->a.getUuid().equals(u.toString()));t.getMembersapplications().add(new Team.MemberApplication(u.toString(),pl.getName()));p().getTeamData().save();pl.sendMessage("\u00a7a\u5df2\u53d1\u9001\u7533\u8bf7");openMainMenu(pl);}else openMainMenu(pl);});
+        p().openGui(pl, inv, id->{if(id==4){UUID u=pl.getUniqueId();for(Map.Entry<String,Team> e:p().getTeamData().getAll().entrySet())e.getValue().getMembersapplications().removeIf(a->a.getUuid().equals(u.toString()));t.getMembersapplications().add(new Team.MemberApplication(u.toString(),pl.getName()));p().getTeamData().save();pl.sendMessage("\u00a7a\u5df2\u53d1\u9001\u7533\u8bf7");openMainMenu(pl);}else openMainMenu(pl);});
     }
 
     // ==================== CREATE ====================
@@ -917,8 +909,7 @@ public class JavaMenus {
         int slots=Math.min(45,ids.size());int rows=(slots/9)+1;int size=Math.min(54,(rows+1)*9);if(size<9)size=9;
         Inventory inv=Bukkit.createInventory(null,size,"\u00a7lOP\u7ba1\u7406");int idx=0;
         for(String id:ids){if(idx>=45)break;Team t=p().getTeamData().get(id);inv.setItem(idx++,item(Material.REPEATER,"\u00a7l"+t.getName(),"\u6210\u957f\u503c:"+t.getActivity()+" | \u79ef\u91d1:"+t.getFunds()+" | "+t.getMemberCount()+"\u4eba"));}
-        int bs=size-9;inv.setItem(bs,item(Material.BARRIER,"\u00a7l\u5173\u95ed"));pl.openInventory(inv);
-        p().setGuiContext(pl.getUniqueId(),id->{if(id==bs)return;if(id>=0&&id<ids.size())openAdminTeamMenu(pl,ids.get(id));});
+        int bs=size-9;inv.setItem(bs,item(Material.BARRIER,"\u00a7l\u5173\u95ed"));p().openGui(pl, inv, id->{if(id==bs)return;if(id>=0&&id<ids.size())openAdminTeamMenu(pl,ids.get(id));});
     }
 
     public static void openAdminTeamMenu(Player pl, String tid) {
@@ -928,21 +919,21 @@ public class JavaMenus {
         inv.setItem(2,item(Material.ENDER_PEARL,"\u00a7l\u4e92\u4f20"));inv.setItem(3,item(Material.GOLD_NUGGET,"\u00a7l\u79ef\u91d1"));
         inv.setItem(4,item(Material.WRITABLE_BOOK,"\u00a7l\u7559\u8a00\u677f"));inv.setItem(5,item(Material.REPEATER,"\u00a7l\u7ba1\u7406"));
         inv.setItem(17,item(Material.ARROW,"\u00a7c\u8fd4\u56de"));
-        pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{switch(id){case 0:openTeamDetail(pl,tid);break;case 1:openWarpMenu(pl,tid);break;case 2:openTpaMainMenu(pl,tid);break;case 3:openTeamFundMenu(pl,tid);break;case 4:openMessageBoard(pl,tid);break;case 5:openTeamManageMenu(pl,tid);break;case 17:openAdminTeamList(pl);break;}});
+        p().openGui(pl, inv, id->{switch(id){case 0:openTeamDetail(pl,tid);break;case 1:openWarpMenu(pl,tid);break;case 2:openTpaMainMenu(pl,tid);break;case 3:openTeamFundMenu(pl,tid);break;case 4:openMessageBoard(pl,tid);break;case 5:openTeamManageMenu(pl,tid);break;case 17:openAdminTeamList(pl);break;}});
     }
 
     // ==================== NEW MESSAGE ALERT ====================
     public static void openNewMessageAlert(Player pl, String tid, String tn) {
         Inventory inv=Bukkit.createInventory(null,9,"\u00a7l\u65b0\u7559\u8a00");
         inv.setItem(2,item(Material.PAPER,"\u00a7e"+tn+" \u6709\u65b0\u7559\u8a00"));inv.setItem(4,item(Material.WRITABLE_BOOK,"\u00a72\u00a7l\u7acb\u5373\u67e5\u770b","\u00a77\u70b9\u51fb\u67e5\u770b\u56e2\u961f\u7559\u8a00\u677f"));inv.setItem(8,item(Material.BARRIER,"\u00a7c\u00a7l\u7a0d\u540e"));
-        pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{if(id==4)openMessageBoard(pl,tid);});
+        p().openGui(pl, inv, id->{if(id==4)openMessageBoard(pl,tid);});
     }
 
     // ==================== ALERT ====================
     public static void openAlert(Player pl, String msg, Runnable cb) {
         Inventory inv=Bukkit.createInventory(null,9,"\u00a7l\u63d0\u793a");
         inv.setItem(4,item(Material.PAPER,msg.length()>40?msg.substring(0,40):msg));inv.setItem(8,item(Material.LIME_WOOL,"\u00a72\u00a7l\u786e\u5b9a"));
-        pl.openInventory(inv);p().setGuiContext(pl.getUniqueId(),id->{if(id==8&&cb!=null)cb.run();});
+        p().openGui(pl, inv, id->{if(id==8&&cb!=null)cb.run();});
     }
 
     // ==================== HELPERS ====================
