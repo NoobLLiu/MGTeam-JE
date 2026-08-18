@@ -1,6 +1,5 @@
 package cn.gmzc.mgteam.gui;
 
-import cn.gmzc.essentialsxmenu.TeleportWaitBridge;
 import cn.gmzc.mgteam.model.FundLogEntry;
 import cn.gmzc.mgteam.model.MessageEntry;
 import cn.gmzc.mgteam.model.Team;
@@ -840,17 +839,7 @@ public class BedrockForms {
             switch(wp.getDim()){case -1:w=Bukkit.getWorlds().stream().filter(w2->w2.getEnvironment()==World.Environment.NETHER).findFirst().orElse(null);break;case 1:w=Bukkit.getWorlds().stream().filter(w2->w2.getEnvironment()==World.Environment.THE_END).findFirst().orElse(null);break;default:w=Bukkit.getWorlds().stream().filter(w2->w2.getEnvironment()==World.Environment.NORMAL).findFirst().orElse(null);break;}
         }
         if(w==null){openAlert(pl,"\u00a7c\u7ef4\u5ea6\u5f02\u5e38\uff01",()->openWarpMainMenu(pl,tid));return;}
-        Location destination = new Location(w, wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5);
-        if (!TeleportWaitBridge.startWarmup(pl, () -> {
-            TeleportWaitBridge.allowNextTeleport(pl);
-            if (pl.teleport(destination)) {
-                pl.sendMessage("\u00a7a\u5df2\u4f20\u9001\u81f3 " + wn + "\uff01");
-            } else {
-                pl.sendMessage("\u00a7c\u4f20\u9001\u5931\u8d25\uff01");
-            }
-        })) {
-            pl.sendMessage("\u00a7c\u4f20\u9001\u7cfb\u7edf\u6682\u4e0d\u53ef\u7528\uff01");
-        }
+        pl.teleport(new Location(w,wp.getX()+0.5,wp.getY(),wp.getZ()+0.5)); pl.sendMessage("\u00a7a\u5df2\u4f20\u9001\u81f3 "+wn+"\uff01");
     }
 
     private static void handleQuitTeam(Player pl, String tid) {
