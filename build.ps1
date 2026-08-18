@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$workspaceRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $projectRoot))
+$devPluginsRoot = Split-Path -Parent $projectRoot
+$workspaceRoot = Split-Path -Parent $devPluginsRoot
 $serverRoot = Join-Path $workspaceRoot 'StarCIty'
 $devRoot = Join-Path $workspaceRoot 'dev'
 $javaHome = Join-Path $serverRoot 'runtime\jdk25\jdk-25.0.3'
@@ -26,8 +27,9 @@ $placeholderJar = Get-PluginJar '*PlaceholderAPI-2.12.2.jar'
 $essentialsJar = Get-PluginJar '*EssentialsX-2.22.0.jar'
 $skinCacheJar = Join-Path $devRoot 'local-plugins\gmzc-skin-cache\build\GMZCSkinCache-1.0.0.jar'
 $titlesJar = Join-Path $devRoot 'local-plugins\title-system\build\GMZCTitles-1.0.0.jar'
+$menuJar = Join-Path $devRoot 'local-plugins\essentialsx-menu\build\GMZCEssentialsMenu-1.0.0.jar'
 
-$baseClassPath = "$paperApi;$floodgateJar;$geyserJar;$vaultJar;$skinCacheJar;$titlesJar"
+$baseClassPath = "$paperApi;$floodgateJar;$geyserJar;$vaultJar;$skinCacheJar;$titlesJar;$menuJar"
 if (Test-Path -LiteralPath $placeholderJar) {
     $baseClassPath = "$baseClassPath;$placeholderJar"
 }
@@ -37,6 +39,7 @@ if (Test-Path -LiteralPath $essentialsJar) {
 
 $libraryJars = Get-ChildItem -LiteralPath (Join-Path $serverRoot 'libraries') -Recurse -Filter '*.jar' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
 $compileClassPath = "$baseClassPath;$($libraryJars -join ';')"
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 foreach ($path in @($pluginOut)) {
     if (Test-Path -LiteralPath $path) {
@@ -49,7 +52,10 @@ $sources = Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Recurse -F
     Where-Object { $_.Name -ne 'FundConsumeManager.java' } |
     ForEach-Object FullName
 if ($sources.Count -gt 0) {
-    & (Join-Path $javaHome 'bin\javac.exe') -encoding UTF-8 -proc:none -cp $compileClassPath -d $pluginOut $sources
+    $argumentsFile = Join-Path $buildRoot 'javac-plugin-args.txt'
+    $arguments = @('-encoding', 'UTF-8', '-proc:none', '-cp', $compileClassPath, '-d', $pluginOut) + $sources
+    [System.IO.File]::WriteAllLines($argumentsFile, $arguments, $utf8NoBom)
+    & (Join-Path $javaHome 'bin\javac.exe') "@$argumentsFile"
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

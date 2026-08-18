@@ -1,8 +1,8 @@
 # MGTeam Java Source Generator
 # Generates all source files with Unicode escapes for non-ASCII text
 
-$ROOT = "D:\codex 2\mc-server\mc-server\local-plugins\mgteam"
-$SRC = "$ROOT\src\cn\gmzc\mgteam"
+$ROOT = $PSScriptRoot
+$SRC = Join-Path $ROOT 'src\cn\gmzc\mgteam'
 
 function Write-JavaFile {
     param($Path, $Content)

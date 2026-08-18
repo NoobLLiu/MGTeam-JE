@@ -1,7 +1,7 @@
 # MGTeam Part 2: Data managers, Economy, Commands, Listener, API
 
-$ROOT = "D:\codex 2\mc-server\mc-server\local-plugins\mgteam"
-$SRC = "$ROOT\src\cn\gmzc\mgteam"
+$ROOT = $PSScriptRoot
+$SRC = Join-Path $ROOT 'src\cn\gmzc\mgteam'
 function Write-JavaFile { param($Path, $Content) $fullPath = "$SRC\$Path"; [System.IO.File]::WriteAllText($fullPath, $Content, [System.Text.UTF8Encoding]::new($false)); Write-Host "  $Path" }
 
 # ==================== DATA MANAGERS ====================

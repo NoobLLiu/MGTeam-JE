@@ -1,5 +1,6 @@
 package cn.gmzc.mgteam.web;
 
+import cn.gmzc.essentialsxmenu.TeleportWaitBridge;
 import cn.gmzc.mgteam.GrowthLevelAccess;
 import cn.gmzc.mgteam.MGTeamPlugin;
 import cn.gmzc.mgteam.model.FundLogEntry;
@@ -529,8 +530,14 @@ public class WebTeamManager {
             Team.WarpPoint wp = t.getWarpPoints().get(wn);
             World w = resolveWorld(wp);
             if (w == null) return fail("维度异常，无法传送");
-            pl.teleport(new Location(w, wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5));
-            return ok(map("team_id", id, "name", wn, "message", "已传送至 " + wn));
+            Location destination = new Location(w, wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5);
+            if (!TeleportWaitBridge.startWarmup(pl, () -> {
+                TeleportWaitBridge.allowNextTeleport(pl);
+                pl.teleport(destination);
+            })) {
+                return fail("传送系统暂不可用");
+            }
+            return ok(map("team_id", id, "name", wn, "message", "传送等待已开始：" + wn));
         });
     }
 

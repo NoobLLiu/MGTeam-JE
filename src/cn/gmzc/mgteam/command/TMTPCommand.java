@@ -1,5 +1,6 @@
 package cn.gmzc.mgteam.command;
 
+import cn.gmzc.essentialsxmenu.TeleportWaitBridge;
 import cn.gmzc.mgteam.MGTeamPlugin;
 import cn.gmzc.mgteam.gui.GuiRouter;
 import cn.gmzc.mgteam.GrowthLevelAccess;
@@ -56,7 +57,7 @@ public class TMTPCommand implements CommandExecutor, TabCompleter {
         for(String k:warps.keySet())if(k.equalsIgnoreCase(name))return k;
         return null;
     }
-    private static void teleportToWarp(Player pl,String wn,Team.WarpPoint wp){
+    private void teleportToWarp(Player pl,String wn,Team.WarpPoint wp){
         World w;
         String wName=wp.getWorld();
         if(wName!=null&&!wName.isEmpty())w=Bukkit.getWorld(wName);else w=null;
@@ -64,7 +65,16 @@ public class TMTPCommand implements CommandExecutor, TabCompleter {
             switch(wp.getDim()){case -1:w=Bukkit.getWorlds().stream().filter(w2->w2.getEnvironment()==World.Environment.NETHER).findFirst().orElse(null);break;case 1:w=Bukkit.getWorlds().stream().filter(w2->w2.getEnvironment()==World.Environment.THE_END).findFirst().orElse(null);break;default:w=Bukkit.getWorlds().stream().filter(w2->w2.getEnvironment()==World.Environment.NORMAL).findFirst().orElse(null);break;}
         }
         if(w==null){pl.sendMessage("\u00a7c\u7ef4\u5ea6\u5f02\u5e38\uff0c\u65e0\u6cd5\u4f20\u9001\uff01");return;}
-        pl.teleport(new Location(w,wp.getX()+0.5,wp.getY(),wp.getZ()+0.5));
-        pl.sendMessage("\u00a7a\u5df2\u4f20\u9001\u81f3 "+wn);
+        Location destination = new Location(w, wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5);
+        if (!TeleportWaitBridge.startWarmup(pl, () -> {
+            TeleportWaitBridge.allowNextTeleport(pl);
+            if (pl.teleport(destination)) {
+                pl.sendMessage("\u00a7a\u5df2\u4f20\u9001\u81f3 " + wn);
+            } else {
+                pl.sendMessage("\u00a7c\u4f20\u9001\u5931\u8d25\uff01");
+            }
+        })) {
+            pl.sendMessage("\u00a7c\u4f20\u9001\u7cfb\u7edf\u6682\u4e0d\u53ef\u7528\uff01");
+        }
     }
 }

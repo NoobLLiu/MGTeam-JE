@@ -135,10 +135,10 @@ Map<String, Object> result = web.teamDetail("xI1a");
 ## 9. 构建与部署
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\java-server\dev\local-plugins\mgteam\build.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\java-server\dev-plugins\MGteam-JE\build.ps1
 ```
 
-产物：`D:\java-server\dev\local-plugins\mgteam\build\MGTeam-1.0.0.jar`。
+产物：`D:\java-server\dev-plugins\MGteam-JE\build\MGTeam-1.0.0.jar`。
 导出接口类位于 `src\cn\gmzc\mgteam\web\WebTeamManager.java`（统一 web 文件夹），
 插件入口 `MGTeamPlugin#getWebTeamManager()`。部署与游戏内插件一致：替换
 `D:\java-server\StarCIty\plugins\[原创-团队系统]MGTeam-1.0.0.jar` 后下次 `start.bat` 重启生效。

@@ -5,7 +5,7 @@ api-version: '1.21'
 authors: [Codex]
 description: MG团队系统 - 自由组队、共享传送点、公共存款
 depend: [GMZCSkinCache]
-softdepend: [floodgate, Geyser-Spigot, Vault, PlaceholderAPI, Essentials, GMZCTitles]
+softdepend: [floodgate, Geyser-Spigot, Vault, PlaceholderAPI, Essentials, GMZCTitles, GMZCEssentialsMenu]
 commands:
   tm:
     description: MGteam团队系统主命令

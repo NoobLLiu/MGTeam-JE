@@ -3,14 +3,15 @@
 # Uses [System.IO.File]::WriteAllText with UTF8 no-BOM encoding
 
 $ErrorActionPreference = 'Stop'
+$projectRoot = $PSScriptRoot
+$baseSrc = Join-Path $projectRoot 'src\cn\gmzc\mgteam'
 
 function Write-JavaFile {
     param(
         [string]$RelativePath,
         [string]$Content
     )
-    $base = "D:\codex 2\mc-server\mc-server\local-plugins\mgteam\src\cn\gmzc\mgteam"
-    $fullPath = Join-Path $base $RelativePath
+    $fullPath = Join-Path $baseSrc $RelativePath
     $dir = Split-Path $fullPath -Parent
     if (-not (Test-Path -LiteralPath $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -20,7 +21,6 @@ function Write-JavaFile {
 }
 
 # Ensure all directories exist
-$baseSrc = "D:\codex 2\mc-server\mc-server\local-plugins\mgteam\src\cn\gmzc\mgteam"
 foreach ($sub in @('api','command','config','data','economy','gui','listener','model','util')) {
     $p = Join-Path $baseSrc $sub
     if (-not (Test-Path -LiteralPath $p)) { New-Item -ItemType Directory -Path $p -Force | Out-Null }
