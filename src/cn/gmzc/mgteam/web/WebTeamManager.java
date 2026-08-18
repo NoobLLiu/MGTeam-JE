@@ -1,6 +1,5 @@
 package cn.gmzc.mgteam.web;
 
-import cn.gmzc.essentialsxmenu.TeleportWaitBridge;
 import cn.gmzc.mgteam.GrowthLevelAccess;
 import cn.gmzc.mgteam.MGTeamPlugin;
 import cn.gmzc.mgteam.model.FundLogEntry;
@@ -18,10 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 /**
@@ -45,7 +41,7 @@ public class WebTeamManager {
         this.plugin = plugin;
     }
 
-    // ===================== 只读：团队列表/详情/成员/申请/传送点/资金/留言/排行 =====================
+    // ===================== 只读：团队列表/详情/成员/申请/资金/留言/排行 =====================
 
     /** 公开团队排行列表（与游戏内排行菜单一致：仅公开团队，成长值>0 优先，成长值/资金降序），支持分页与搜索。 */
     public Map<String, Object> teamList(int page, int pageSize, String query) {
@@ -113,21 +109,7 @@ public class WebTeamManager {
         });
     }
 
-    /** 团队传送点列表。 */
-    public Map<String, Object> teamWarps(String tid) {
-        return onMain(() -> {
-            String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
-            Team t = plugin.getTeamData().get(id);
-            List<Map<String, Object>> warps = new ArrayList<>();
-            for (Map.Entry<String, Team.WarpPoint> e : t.getWarpPoints().entrySet()) {
-                warps.add(warpView(e.getKey(), e.getValue()));
-            }
-            return ok(map("team_id", id, "warps", warps, "total", warps.size()));
-        });
-    }
-
-    /** 团队资金与货币名。 */
+        /** 团队资金与货币名。 */
     public Map<String, Object> teamFunds(String tid) {
         return onMain(() -> {
             String id = plugin.getTeamData().resolveId(tid);
@@ -469,98 +451,7 @@ public class WebTeamManager {
         });
     }
 
-    // ===================== 写操作：传送点 / 互传 / 资金 / 留言 =====================
-
-    /** 新增传送点（成员；名称1-10字且唯一；坐标为调用方指定，与世界/维度一致）。 */
-    public Map<String, Object> addWarp(String tid, String uuid, String name, int x, int y, int z, int dim, String world, String icon) {
-        return withPlayerLock(uuid, () -> {
-            Player pl = onlinePlayer(uuid);
-            if (pl == null) return fail("该操作需要玩家在线");
-            if (GrowthLevelAccess.restricted(pl)) return fail("该功能需要成长等级达到 " + GrowthLevelAccess.REQUIRED_LEVEL + " 级");
-            String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
-            if (!id.equals(plugin.getTeamData().getPlayerTeamId(pl.getUniqueId()))) return fail("您不在此团队中");
-            Team t = plugin.getTeamData().get(id);
-            String n = name == null ? "" : name.trim();
-            if (n.length() < 1 || n.length() > 10) return fail("名称必须1-10字");
-            if (t.getWarpPoints().containsKey(n)) return fail("名称已存在");
-            String ic = icon;
-            if (ic == null || Material.matchMaterial(ic) == null) ic = "COMPASS";
-            Team.WarpPoint wp = new Team.WarpPoint(x, y, z, dim, pl.getUniqueId().toString(), pl.getName(), ic, world == null ? "" : world);
-            t.getWarpPoints().put(n, wp);
-            plugin.getTeamData().save();
-            return ok(map("team_id", id, "name", n, "message", "传送点创建成功"));
-        });
-    }
-
-    /** 删除传送点（创建者本人或管理员/管理标志）。 */
-    public Map<String, Object> removeWarp(String tid, String uuid, String name, boolean admin) {
-        return withPlayerLock(uuid, () -> {
-            Player pl = onlinePlayer(uuid);
-            if (pl == null) return fail("该操作需要玩家在线");
-            if (GrowthLevelAccess.restricted(pl)) return fail("该功能需要成长等级达到 " + GrowthLevelAccess.REQUIRED_LEVEL + " 级");
-            String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
-            if (!id.equals(plugin.getTeamData().getPlayerTeamId(pl.getUniqueId()))) return fail("您不在此团队中");
-            Team t = plugin.getTeamData().get(id);
-            String wn = resolveWarpName(t, name);
-            if (wn == null) return fail("传送点不存在");
-            Team.WarpPoint wp = t.getWarpPoints().get(wn);
-            boolean can = admin || plugin.getTeamData().isTeamOperator(pl.getUniqueId(), id)
-                || pl.getUniqueId().toString().equals(wp.getCreatorUuid());
-            if (!can) return fail("只能删除自己创建的锚点");
-            t.getWarpPoints().remove(wn);
-            plugin.getTeamData().save();
-            return ok(map("team_id", id, "name", wn, "message", "传送点已删除"));
-        });
-    }
-
-    /** 传送到团队传送点（与 tmtp 指令一致）。 */
-    public Map<String, Object> teleportToWarp(String tid, String uuid, String name) {
-        return withPlayerLock(uuid, () -> {
-            Player pl = onlinePlayer(uuid);
-            if (pl == null) return fail("该操作需要玩家在线");
-            if (GrowthLevelAccess.restricted(pl)) return fail("该功能需要成长等级达到 " + GrowthLevelAccess.REQUIRED_LEVEL + " 级");
-            String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
-            if (!id.equals(plugin.getTeamData().getPlayerTeamId(pl.getUniqueId()))) return fail("您不在此团队中");
-            Team t = plugin.getTeamData().get(id);
-            String wn = resolveWarpName(t, name);
-            if (wn == null) return fail("未找到传送点 " + name);
-            Team.WarpPoint wp = t.getWarpPoints().get(wn);
-            World w = resolveWorld(wp);
-            if (w == null) return fail("维度异常，无法传送");
-            Location destination = new Location(w, wp.getX() + 0.5, wp.getY(), wp.getZ() + 0.5);
-            if (!TeleportWaitBridge.startWarmup(pl, () -> {
-                TeleportWaitBridge.allowNextTeleport(pl);
-                pl.teleport(destination);
-            })) {
-                return fail("传送系统暂不可用");
-            }
-            return ok(map("team_id", id, "name", wn, "message", "传送等待已开始：" + wn));
-        });
-    }
-
-    /** 传送到队友（与 tmtpa/互传 GUI 一致）。 */
-    public Map<String, Object> teleportToPlayer(String uuid, String targetUuid) {
-        return withPlayerLock(uuid, () -> {
-            Player pl = onlinePlayer(uuid);
-            if (pl == null) return fail("该操作需要玩家在线");
-            if (GrowthLevelAccess.restricted(pl)) return fail("该功能需要成长等级达到 " + GrowthLevelAccess.REQUIRED_LEVEL + " 级");
-            if (!validUuid(targetUuid)) return fail("无效的目标玩家UUID");
-            Player target = Bukkit.getPlayer(parseUuid(targetUuid));
-            if (target == null) return fail("目标玩家不在线");
-            if (target.getUniqueId().equals(pl.getUniqueId())) return fail("不能传送到自己");
-            String tid = plugin.getTeamData().getPlayerTeamId(pl.getUniqueId());
-            if (tid == null || !tid.equals(plugin.getTeamData().getPlayerTeamId(target.getUniqueId()))) {
-                return fail("该玩家不在你的团队");
-            }
-            pl.teleport(target.getLocation());
-            pl.sendMessage("\u00a7a已传送至 " + target.getName());
-            target.sendMessage("\u00a7e" + pl.getName() + "传送到了你身边");
-            return ok(map("team_id", tid, "target_name", target.getName(), "message", "已传送至 " + target.getName()));
-        });
-    }
+    // ===================== 写操作：资金 / 留言 =====================
 
     /** 存入团队资金（成员；与游戏内一致：扣余额、写流水、触发管理员提醒）。 */
     public Map<String, Object> depositFunds(String tid, String uuid, long amount) {
@@ -814,7 +705,6 @@ public class WebTeamManager {
         view.put("notice_updated_at", t.getNoticeUpdatedAt());
         view.put("member_count", t.getMemberCount());
         view.put("operator_count", operatorsOf(t).size());
-        view.put("warp_count", t.getWarpPoints() == null ? 0 : t.getWarpPoints().size());
         view.put("message_count", plugin.getMessageData().getMessages(id).size());
         view.put("application_count", applicationsOf(t).size());
         view.put("currency_name", plugin.getConfig2().getCurrencyName());
@@ -841,22 +731,6 @@ public class WebTeamManager {
         } catch (Exception e) {
             view.put("online", false);
         }
-        return view;
-    }
-
-    private Map<String, Object> warpView(String name, Team.WarpPoint wp) {
-        Map<String, Object> view = new LinkedHashMap<>();
-        view.put("name", name);
-        view.put("x", wp.getX());
-        view.put("y", wp.getY());
-        view.put("z", wp.getZ());
-        view.put("dim", wp.getDim());
-        view.put("world", wp.getWorld());
-        view.put("world_display", wp.getWorldDisplay());
-        view.put("creator_uuid", wp.getCreatorUuid());
-        view.put("creator_name", Util.plainName(wp.getCreatorName()));
-        view.put("icon", wp.getIcon());
-        view.put("created_at", wp.getCreatedAt());
         return view;
     }
 
@@ -918,30 +792,6 @@ public class WebTeamManager {
         return id.equalsIgnoreCase(q)
             || t.getName().toLowerCase().contains(q.toLowerCase())
             || id.toLowerCase().contains(q.toLowerCase());
-    }
-
-    private String resolveWarpName(Team t, String name) {
-        if (name == null) return null;
-        String n = name.trim();
-        if (t.getWarpPoints().containsKey(n)) return n;
-        for (String k : t.getWarpPoints().keySet()) {
-            if (k.equalsIgnoreCase(n)) return k;
-        }
-        return null;
-    }
-
-    private World resolveWorld(Team.WarpPoint wp) {
-        World w = null;
-        String wName = wp.getWorld();
-        if (wName != null && !wName.isEmpty()) w = Bukkit.getWorld(wName);
-        if (w == null) {
-            switch (wp.getDim()) {
-                case -1: w = Bukkit.getWorlds().stream().filter(w2 -> w2.getEnvironment() == World.Environment.NETHER).findFirst().orElse(null); break;
-                case 1: w = Bukkit.getWorlds().stream().filter(w2 -> w2.getEnvironment() == World.Environment.THE_END).findFirst().orElse(null); break;
-                default: w = Bukkit.getWorlds().stream().filter(w2 -> w2.getEnvironment() == World.Environment.NORMAL).findFirst().orElse(null); break;
-            }
-        }
-        return w;
     }
 
     private Player onlinePlayer(String uuid) {
