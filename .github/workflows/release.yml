@@ -1,12 +1,15 @@
-name: Build
+name: Release
 
 on:
   push:
-  pull_request:
-  workflow_dispatch:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +19,8 @@ jobs:
           java-version: '25'
       - name: Build plugin
         run: bash ci/build.sh
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Create release
+        uses: softprops/action-gh-release@v2
         with:
-          name: MGTeam
-          path: build/MGTeam-1.0.0.jar
+          body_path: ci/RELEASE_NOTES.md
+          files: build/MGTeam-1.0.0.jar
