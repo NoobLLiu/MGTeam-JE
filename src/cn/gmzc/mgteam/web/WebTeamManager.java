@@ -26,6 +26,9 @@ import org.bukkit.entity.Player;
  * <p>目标：把游戏内团队菜单/命令的每个按钮功能导出给网页端，行为与游戏内一致：
  * <ul>
  *   <li>校验一致：成长等级、名称长度/唯一、余额、权限、冷却、目标存在性均复用游戏内同一规则。</li>
+ *   <li>权限一致：玩家只能访问自己有权访问的数据（与游戏内相同）——只读接口按调用者身份校验：
+ *       团队详情/成员/资金/留言仅团队成员可见，流水/申请/管理操作仅团队管理员可见，
+ *       排行榜仅公开团队对外可见；服务器管理员（admin=true，对应 mgteam.admin）可越权查看。</li>
  *   <li>单一数据源：所有写操作直接修改 TeamDataManager/MessageDataManager/FundLogManager 的同一存储，
  *       并触发与游戏内相同的资金/留言提醒。</li>
  *   <li>并发安全：写操作按操作者 UUID 加可重入锁，并强制回服务器主线程串行执行（callSyncMethod）。</li>
@@ -70,85 +73,89 @@ public class WebTeamManager {
         });
     }
 
-    /** 团队详情：基本信息 + 成员列表 + 统计。 */
-    public Map<String, Object> teamDetail(String tid) {
+    /** 团队详情（仅团队成员/管理员可见，与游戏内详情页一致）：基本信息 + 成员列表 + 统计。 */
+    public Map<String, Object> teamDetail(String tid, String actorUuid, boolean admin) {
         return onMain(() -> {
+            String err = membershipError(tid, actorUuid, admin, false);
+            if (err != null) return fail(err);
             String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
             Team t = plugin.getTeamData().get(id);
             return ok(teamDetailView(id, t));
         });
     }
 
-    /** 团队成员列表（管理员在前，与游戏内详情页一致）。 */
-    public Map<String, Object> teamMembers(String tid) {
-        return onMain(() -> {
+    /** 团队成员列表（仅团队成员/管理员可见；管理员在前，与游戏内详情页一致）。返回数组。 */
+    public List<Map<String, Object>> teamMembers(String tid, String actorUuid, boolean admin) {
+        return onMainList(() -> {
+            String err = membershipError(tid, actorUuid, admin, false);
+            if (err != null) return null;
             String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
             Team t = plugin.getTeamData().get(id);
             List<Map<String, Object>> members = new ArrayList<>();
             for (Team.MemberEntry m : operatorsOf(t)) members.add(memberView(m, true));
             for (Team.MemberEntry m : membersOf(t)) members.add(memberView(m, false));
-            return ok(map("team_id", id, "members", members, "total", members.size()));
-        });
+            return members;
+        }, "团队成员");
     }
 
-    /** 待处理申请（管理员/操作者可见）。 */
-    public Map<String, Object> teamApplications(String tid, String actorUuid, boolean admin) {
-        return onMain(() -> {
+    /** 待处理申请（仅团队管理员/管理员可见）。返回数组。 */
+    public List<Map<String, Object>> teamApplications(String tid, String actorUuid, boolean admin) {
+        return onMainList(() -> {
+            String err = membershipError(tid, actorUuid, admin, true);
+            if (err != null) return null;
             String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
-            if (!admin) {
-                if (!validUuid(actorUuid)) return fail("无效的操作者UUID");
-                if (!plugin.getTeamData().isTeamOperator(parseUuid(actorUuid), id)) return fail("需要管理员权限");
-            }
             Team t = plugin.getTeamData().get(id);
             List<Map<String, Object>> apps = new ArrayList<>();
             for (Team.MemberApplication a : applicationsOf(t)) apps.add(applicationView(a));
-            return ok(map("team_id", id, "applications", apps, "total", apps.size()));
-        });
+            return apps;
+        }, "申请列表");
     }
 
-        /** 团队资金与货币名。 */
-    public Map<String, Object> teamFunds(String tid) {
+    /** 团队资金与货币名（仅团队成员/管理员可见）。 */
+    public Map<String, Object> teamFunds(String tid, String actorUuid, boolean admin) {
         return onMain(() -> {
+            String err = membershipError(tid, actorUuid, admin, false);
+            if (err != null) return fail(err);
             String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
             Team t = plugin.getTeamData().get(id);
-            return ok(map("team_id", id, "funds", t.getFunds(), "currency_name", plugin.getConfig2().getCurrencyName()));
+            return ok(map("tid", id, "team_id", id, "funds", t.getFunds(), "currency_name", plugin.getConfig2().getCurrencyName()));
         });
     }
 
-    /** 资金流水（与游戏内流水页一致，默认 50 条上限，支持分页）。 */
-    public Map<String, Object> fundLogs(String tid, int page, int pageSize) {
+    /** 资金流水（仅团队管理员/管理员可见，与游戏内流水页一致，默认 50 条上限，支持分页）。 */
+    public Map<String, Object> fundLogs(String tid, String actorUuid, boolean admin, int page, int pageSize) {
         return onMain(() -> {
+            String err = membershipError(tid, actorUuid, admin, true);
+            if (err != null) return fail(err);
             String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
             List<FundLogEntry> logs = plugin.getFundLog().getLogs(id);
             return ok(pageView(logs, page, pageSize, plugin.getConfig2().getFundLogDisplayLimit(), 100, this::fundLogView));
         });
     }
 
-    /** 团队留言（最新在前，与游戏内留言板一致）。 */
-    public Map<String, Object> teamMessages(String tid, int page, int pageSize) {
+    /** 团队留言（仅团队成员/管理员可见；最新在前，与游戏内留言板一致）。 */
+    public Map<String, Object> teamMessages(String tid, String actorUuid, boolean admin, int page, int pageSize) {
         return onMain(() -> {
+            String err = membershipError(tid, actorUuid, admin, false);
+            if (err != null) return fail(err);
             String id = plugin.getTeamData().resolveId(tid);
-            if (id == null) return fail("团队不存在");
             List<MessageEntry> msgs = plugin.getMessageData().getMessages(id);
             return ok(pageView(msgs, page, pageSize, 10, 100, this::messageView));
         });
     }
 
-    /** 玩家在指定团队的未读状态（留言/公告），不改变任何已读标记。 */
-    public Map<String, Object> messageState(String tid, String uuid) {
+    /** 玩家在指定团队的未读状态（留言/公告），不改变任何已读标记。仅本人或管理员。 */
+    public Map<String, Object> messageState(String tid, String uuid, boolean admin) {
         return onMain(() -> {
             if (!validUuid(uuid)) return fail("无效的玩家UUID");
             String id = plugin.getTeamData().resolveId(tid);
             if (id == null) return fail("团队不存在");
             Team t = plugin.getTeamData().get(id);
             UUID u = parseUuid(uuid);
+            if (!admin && !id.equals(plugin.getTeamData().getPlayerTeamId(u))) return fail("您不在此团队中");
             long noticeUpdatedAt = t.getNoticeUpdatedAt();
             return ok(map(
+                "tid", id,
                 "team_id", id,
                 "has_new_messages", plugin.getMessageData().hasNewMessages(u, id),
                 "has_new_notice", plugin.getMessageData().hasNewNotice(u, id, noticeUpdatedAt),
@@ -159,7 +166,7 @@ public class WebTeamManager {
         });
     }
 
-    /** 玩家当前所在团队。 */
+    /** 玩家当前所在团队（扁平结构，含成员列表）。 */
     public Map<String, Object> myTeam(String uuid) {
         return onMain(() -> {
             if (!validUuid(uuid)) return fail("无效的玩家UUID");
@@ -167,13 +174,12 @@ public class WebTeamManager {
             if (id == null) return ok(map("in_team", false));
             Team t = plugin.getTeamData().get(id);
             boolean op = plugin.getTeamData().isTeamOperator(parseUuid(uuid), id);
-            return ok(map(
-                "in_team", true,
-                "team_id", id,
-                "team_name", t.getName(),
-                "role", op ? "OPERATOR" : "MEMBER",
-                "team", teamView(id, t)
-            ));
+            Map<String, Object> view = teamDetailView(id, t);
+            view.put("in_team", true);
+            view.put("tid", id);
+            view.put("name", t.getName());
+            view.put("my_role", op ? "OPERATOR" : "MEMBER");
+            return ok(view);
         });
     }
 
@@ -241,6 +247,7 @@ public class WebTeamManager {
             plugin.getTeamData().save();
             return ok(map(
                 "team_id", id,
+                "tid", id,
                 "team_name", n,
                 "cost", cost,
                 "currency_name", plugin.getConfig2().getCurrencyName()
@@ -264,7 +271,7 @@ public class WebTeamManager {
             }
             applicationsOf(t).add(new Team.MemberApplication(u, pl.getName()));
             plugin.getTeamData().save();
-            return ok(map("team_id", id, "message", "已发送申请"));
+            return ok(map("team_id", id, "tid", id, "message", "已发送申请"));
         });
     }
 
@@ -306,7 +313,6 @@ public class WebTeamManager {
             return ok(map("team_id", id, "message", "已忽略"));
         });
     }
-
     /** 设为管理员（管理员/管理标志）。 */
     public Map<String, Object> promoteMember(String tid, String actorUuid, String targetUuid, boolean admin) {
         return withManageLock(tid, actorUuid, admin, () -> {
@@ -580,11 +586,15 @@ public class WebTeamManager {
                 }
                 for (Team.MemberApplication a : applicationsOf(t)) {
                     if (isBad(a.getName())) {
-                        OfflinePlayer op = Bukkit.getOfflinePlayer(parseUuid(a.getUuid()));
-                        String nn = op.getName();
-                        if (nn != null && !nn.isEmpty()) {
-                            a.setName(nn);
-                            fixed++;
+                        try {
+                            OfflinePlayer op = Bukkit.getOfflinePlayer(parseUuid(a.getUuid()));
+                            String nn = op.getName();
+                            if (nn != null && !nn.isEmpty()) {
+                                a.setName(nn);
+                                fixed++;
+                            }
+                        } catch (Exception ex) {
+                            failed++;
                         }
                     }
                 }
@@ -634,7 +644,7 @@ public class WebTeamManager {
             plugin.getTeamData().save();
             plugin.getMessageData().save();
             plugin.getFundLog().save();
-            return ok(map("team_id", id, "team_name", tn, "message", "团队 " + tn + " 已解散"));
+            return ok(map("team_id", id, "tid", id, "team_name", tn, "message", "团队 " + tn + " 已解散"));
         });
     }
 
@@ -690,17 +700,55 @@ public class WebTeamManager {
         }
     }
 
+    /** 列表型接口的主线程调度：失败返回 null，由调用方（bridge）转为错误响应。 */
+    private List<Map<String, Object>> onMainList(Callable<List<Map<String, Object>>> task, String what) {
+        if (Bukkit.isPrimaryThread()) {
+            try {
+                return task.call();
+            } catch (Exception e) {
+                plugin.getLogger().warning("[WebTeam] " + what + " 异常: " + e.getMessage());
+                return null;
+            }
+        }
+        try {
+            return Bukkit.getScheduler().callSyncMethod(plugin, task).get(30L, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            plugin.getLogger().warning("[WebTeam] 主线程执行失败: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 只读/管理接口的统一权限校验（与游戏内可见性一致）。
+     * admin=true 表示 mgteam.admin，可越权查看任意团队。
+     *
+     * @return null 表示通过；否则返回可直接作为 fail 文案的错误信息。
+     */
+    private String membershipError(String tid, String actorUuid, boolean admin, boolean requireOperator) {
+        if (admin) return null;
+        if (!validUuid(actorUuid)) return "无效的玩家UUID";
+        String id = plugin.getTeamData().resolveId(tid);
+        if (id == null) return "团队不存在";
+        if (!id.equals(plugin.getTeamData().getPlayerTeamId(parseUuid(actorUuid)))) return "您不在此团队中";
+        if (requireOperator && !plugin.getTeamData().isTeamOperator(parseUuid(actorUuid), id)) return "需要管理员权限";
+        return null;
+    }
+
     // ===================== 视图与工具 =====================
 
     private Map<String, Object> teamView(String id, Team t) {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("team_id", id);
+        view.put("tid", id);
         view.put("name", t.getName());
         view.put("funds", t.getFunds());
         view.put("activity", t.getActivity());
         view.put("created_at", t.getCreatedAt());
         view.put("public", t.isPublic());
         view.put("allow_friendly_fire", t.isAllowFriendlyFire());
+        view.put("friendly_fire", t.isAllowFriendlyFire());
+        view.put("owner_uuid", ownerUuid(t));
+        view.put("owner", ownerName(t));
         view.put("notice", t.getNotice());
         view.put("notice_updated_at", t.getNoticeUpdatedAt());
         view.put("member_count", t.getMemberCount());
@@ -717,6 +765,7 @@ public class WebTeamManager {
         for (Team.MemberEntry m : operatorsOf(t)) members.add(memberView(m, true));
         for (Team.MemberEntry m : membersOf(t)) members.add(memberView(m, false));
         view.put("members", members);
+        view.put("member_list", members);
         return view;
     }
 
@@ -725,12 +774,9 @@ public class WebTeamManager {
         view.put("uuid", m.getUuid());
         view.put("name", Util.plainName(m.getName()));
         view.put("role", operator ? "OPERATOR" : "MEMBER");
-        try {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(UUID.fromString(m.getUuid()));
-            view.put("online", op.isOnline());
-        } catch (Exception e) {
-            view.put("online", false);
-        }
+        view.put("operator", operator);
+        view.put("online", isOnline(m.getUuid()));
+        view.put("joined_at", null);
         return view;
     }
 
@@ -738,6 +784,7 @@ public class WebTeamManager {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("sender_uuid", m.getSenderUuid());
         view.put("sender_name", Util.plainName(m.getSenderName()));
+        view.put("sender", Util.plainName(m.getSenderName()));
         view.put("content", m.getContent());
         view.put("time", m.getTime());
         view.put("timestamp", m.getTimestamp());
@@ -749,7 +796,10 @@ public class WebTeamManager {
         view.put("timestamp", e.getTimestamp());
         view.put("time", e.getTime());
         view.put("change", e.getChange());
+        view.put("amount", Math.abs(e.getChange()));
+        view.put("type", e.getChange() >= 0 ? "存入" : "取出");
         view.put("reason", e.getReason());
+        view.put("note", e.getReason());
         view.put("balance_before", e.getBalanceBefore());
         view.put("balance_after", e.getBalanceAfter());
         return view;
@@ -758,9 +808,30 @@ public class WebTeamManager {
     private Map<String, Object> applicationView(Team.MemberApplication a) {
         Map<String, Object> view = new LinkedHashMap<>();
         view.put("uuid", a.getUuid());
+        view.put("applicant_uuid", a.getUuid());
         view.put("name", Util.plainName(a.getName()));
+        view.put("applicant", Util.plainName(a.getName()));
         view.put("applied_at", a.getAppliedAt());
         return view;
+    }
+
+    private boolean isOnline(String uuid) {
+        if (!validUuid(uuid)) return false;
+        try {
+            return Bukkit.getOfflinePlayer(parseUuid(uuid)).isOnline();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String ownerUuid(Team t) {
+        List<Team.MemberEntry> ops = operatorsOf(t);
+        return ops.isEmpty() ? null : ops.get(0).getUuid();
+    }
+
+    private String ownerName(Team t) {
+        List<Team.MemberEntry> ops = operatorsOf(t);
+        return ops.isEmpty() ? null : Util.plainName(ops.get(0).getName());
     }
 
     private <T> Map<String, Object> pageView(List<T> list, int page, int pageSize, int defaultSize, int maxSize, java.util.function.Function<T, Map<String, Object>> mapper) {
